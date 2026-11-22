@@ -1,6 +1,6 @@
 # Dunder LSP
 
-En fristående språkserver för `.ddr` med syntaxmarkering för Neovim, VS Code, Zed och Helix. Servern ger diagnostik medan du skriver, komplettering, typinformation vid hovring, gå till definition, dokumentsymboler, kodåtgärder och formatering. Binären länkar samma Dunder-implementation som `dunder lsp` och kommunicerar över stdio.
+Dunder LSP är en fristående språkserver skriven i [Dunder](https://github.com/Mik-pe/dunder). Repot innehåller också syntaxmarkering för `.ddr` i Neovim, VS Code, Zed och Helix. Servern ger diagnostik medan du skriver, komplettering, typinformation vid hovring, gå till definition, dokumentsymboler, kodåtgärder och formatering. Binären länkar samma Dunder-implementation som `dunder lsp` och kommunicerar över stdio.
 
 ## Bygg och installera språkservern
 
