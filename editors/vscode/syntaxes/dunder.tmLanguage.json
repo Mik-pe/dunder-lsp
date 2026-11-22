@@ -1,0 +1,239 @@
+{
+  "name": "Dunder",
+  "scopeName": "source.dunder",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#declarations"
+    },
+    {
+      "include": "#tokens"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.dunder",
+          "match": "//.*$"
+        },
+        {
+          "include": "#comments-block"
+        }
+      ]
+    },
+    "comments-block": {
+      "name": "comment.block.dunder",
+      "begin": "/\\*",
+      "end": "\\*/",
+      "patterns": [
+        {
+          "include": "#comments-block"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.raw.dunder",
+          "begin": "\\br(#*)(\"\"\"|\"|')",
+          "end": "\\2\\1"
+        },
+        {
+          "name": "string.quoted.interpolated.dunder",
+          "begin": "\\bf\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            {
+              "include": "#escape"
+            },
+            {
+              "name": "constant.character.escape.dunder",
+              "match": "\\{\\{|\\}\\}"
+            },
+            {
+              "include": "#interpolation"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.interpolated.dunder",
+          "begin": "\\bf\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "include": "#escape"
+            },
+            {
+              "name": "constant.character.escape.dunder",
+              "match": "\\{\\{|\\}\\}"
+            },
+            {
+              "include": "#interpolation"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.interpolated.dunder",
+          "begin": "\\bf'",
+          "end": "'",
+          "patterns": [
+            {
+              "include": "#escape"
+            },
+            {
+              "name": "constant.character.escape.dunder",
+              "match": "\\{\\{|\\}\\}"
+            },
+            {
+              "include": "#interpolation"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.triple.dunder",
+          "begin": "\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            {
+              "include": "#escape"
+            }
+          ]
+        },
+        {
+          "name": "constant.character.byte.dunder",
+          "begin": "\\bb'",
+          "end": "'|$",
+          "patterns": [
+            {
+              "include": "#escape"
+            }
+          ]
+        },
+        {
+          "name": "constant.character.rune.dunder",
+          "begin": "`",
+          "end": "`|$",
+          "patterns": [
+            {
+              "include": "#escape"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.dunder",
+          "begin": "([\"'])",
+          "end": "\\1|$",
+          "patterns": [
+            {
+              "include": "#escape"
+            }
+          ]
+        }
+      ]
+    },
+    "escape": {
+      "name": "constant.character.escape.dunder",
+      "match": "\\\\(?:u\\{[0-9a-fA-F]{1,6}\\}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|.)"
+    },
+    "interpolation": {
+      "name": "meta.interpolation.dunder",
+      "contentName": "meta.embedded.inline.dunder",
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.begin.dunder"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.end.dunder"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#braces"
+        },
+        {
+          "include": "$self"
+        }
+      ]
+    },
+    "braces": {
+      "begin": "\\{",
+      "end": "\\}",
+      "patterns": [
+        {
+          "include": "#braces"
+        },
+        {
+          "include": "$self"
+        }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(fn)\\s+([\\p{L}_][\\p{L}\\p{M}\\p{N}_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.function.dunder"
+            },
+            "2": {
+              "name": "entity.name.function.dunder"
+            }
+          }
+        },
+        {
+          "match": "\\b(struct|enum|trait)\\s+([\\p{L}_][\\p{L}\\p{M}\\p{N}_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.type.dunder"
+            },
+            "2": {
+              "name": "entity.name.type.dunder"
+            }
+          }
+        }
+      ]
+    },
+    "tokens": {
+      "patterns": [
+        {
+          "name": "entity.other.attribute-name.dunder",
+          "match": "@[\\p{L}_][\\p{L}\\p{M}\\p{N}_]*"
+        },
+        {
+          "name": "keyword.control.dunder",
+          "match": "\\b(?:as|break|capability|const|continue|defer|else|enum|fn|for|from|if|impl|import|in|match|move|mut|opaque|pub|return|struct|trait|unsafe|while)\\b"
+        },
+        {
+          "name": "constant.language.boolean.dunder",
+          "match": "\\b(?:true|false)\\b"
+        },
+        {
+          "name": "storage.type.dunder",
+          "match": "\\b(?:bool|f32|f64|i16|i32|i64|ptr|range|rune|str|string|u8|u16|u32|u64|usize|Self)\\b"
+        },
+        {
+          "name": "constant.numeric.dunder",
+          "match": "\\b(?:0[xX][0-9a-fA-F](?:_?[0-9a-fA-F])*|0[bB][01](?:_?[01])*|[0-9](?:_?[0-9])*(?:\\.[0-9](?:_?[0-9])*)?(?:[eE][+-]?[0-9](?:_?[0-9])*)?)\\b"
+        },
+        {
+          "name": "entity.name.function.dunder",
+          "match": "\\b[\\p{L}_][\\p{L}\\p{M}\\p{N}_]*(?=\\s*\\()"
+        },
+        {
+          "name": "keyword.operator.dunder",
+          "match": "(?::=|::|->|=>|\\.\\.=?|[+\\-*/%!=<>:&|?])"
+        }
+      ]
+    }
+  }
+}

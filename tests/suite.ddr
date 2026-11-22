@@ -1,0 +1,72 @@
+capability process
+
+import std.json as json
+import std.parse as parse
+import std.process as process
+import std.text as text
+
+fn frame(body: string) -> string { "Content-Length: " + body.len.str() + "\r\n\r\n" + body }
+
+fn next_message(stream: string, offset: &mut i32) -> json.Doc {
+    start := offset
+    prefix := "Content-Length: "
+    assert(text.starts_with(stream[start..stream.len], prefix))
+    split := start + text.find(stream[start..stream.len], "\r\n\r\n").unwrap()
+    size := parse.integer(stream[start + prefix.len..split])
+    assert(size.ok && size.value > 0 && size.value <= i64(stream.len - split - 4))
+    offset = split + 4 + i32(size.value)
+    json.Doc::parse(stream[split + 4..offset]).unwrap()
+}
+
+fn diagnostics(doc: &json.Doc) -> i32 {
+    assert(doc.get_str(doc.root, "method") == .Some("textDocument/publishDiagnostics"))
+    params := doc.field(doc.root, "params")
+    assert(doc.get_str(params, "uri") == .Some("file:///dunder-lsp-fixture.ddr"))
+    items := doc.field(params, "diagnostics")
+    assert(doc.kind(items) == .Array)
+    items
+}
+
+@test fn stdio_document_lifecycle() {
+    mut input := frame(r'{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":null,"rootUri":null,"capabilities":{}}}')
+    input += frame(r'{"jsonrpc":"2.0","method":"initialized","params":{}}')
+    input += frame(r'{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///dunder-lsp-fixture.ddr","languageId":"dunder","version":1,"text":"fn main() { print(missing) }\n"}}}')
+    input += frame(r'{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"file:///dunder-lsp-fixture.ddr","version":2},"contentChanges":[{"text":"fn main() { print(\"åska\") }\n"}]}}')
+    input += frame(r'{"jsonrpc":"2.0","id":"symbols","method":"textDocument/documentSymbol","params":{"textDocument":{"uri":"file:///dunder-lsp-fixture.ddr"}}}')
+    input += frame(r'{"jsonrpc":"2.0","id":3,"method":"shutdown","params":null}')
+    input += frame(r'{"jsonrpc":"2.0","method":"exit"}')
+
+    name := if target_is("windows") { "dunder-lsp.exe" } else { "dunder-lsp" }
+    mut server := process.Command::new("build/" + process.host_target() + "/" + name, ["--stdio"])
+    server.set_timeout(15000)
+    server.set_stdin_text(input)
+    output := server.exec()
+    assert(output.succeeded())
+
+    stream := output.stdout_utf8().unwrap()
+    mut offset := 0
+    init := next_message(stream, &mut offset)
+    assert(init.get_i64(init.root, "id") == .Some(1))
+    result := init.field(init.root, "result")
+    caps := init.field(result, "capabilities")
+    assert(init.get_bool(caps, "hoverProvider") == .Some(true))
+    assert(init.get_bool(caps, "definitionProvider") == .Some(true))
+    assert(init.get_str(init.field(result, "serverInfo"), "name") == .Some("dunder-lsp"))
+
+    broken := next_message(stream, &mut offset)
+    errors := diagnostics(&broken)
+    assert(broken.count(errors) > 0)
+    assert(broken.get_i64(broken.at(errors, 0), "severity") == .Some(1))
+    fixed := next_message(stream, &mut offset)
+    assert(fixed.count(diagnostics(&fixed)) == 0)
+
+    symbols := next_message(stream, &mut offset)
+    assert(symbols.get_str(symbols.root, "id") == .Some("symbols"))
+    first := symbols.at(symbols.field(symbols.root, "result"), 0)
+    assert(symbols.get_str(first, "name") == .Some("main"))
+    shutdown := next_message(stream, &mut offset)
+    assert(shutdown.get_i64(shutdown.root, "id") == .Some(3))
+    assert(shutdown.field(shutdown.root, "result") >= 0)
+    assert(shutdown.kind(shutdown.field(shutdown.root, "result")) == .Null)
+    assert(offset == stream.len)
+}

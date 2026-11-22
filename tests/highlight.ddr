@@ -1,0 +1,11 @@
+// Funktion, typ och tal på samma rad.
+pub fn double(value: i32) -> i32 { value * 0x2 }
+
+fn main() {
+    /* yttre /* inre */ fortfarande en kommentar */
+    text := r#"citat: "Dunder""#
+    enabled := true
+    if enabled {
+        print(f"{text} {double(21)}")
+    }
+}

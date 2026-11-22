@@ -1,0 +1,76 @@
+capability filesystem, process, stdio
+
+import "tree-sitter/grammar"
+import std.fs as fs
+import std.json as json
+import std.process as process
+import std.text as text
+import sys
+
+fn run(move program: string, move args: []string, cwd: string) -> process.Output {
+    mut cmd := process.Command::new(move program, move args)
+    cmd.set_cwd(cwd.clone())
+    cmd.exec()
+}
+
+fn checked(output: &process.Output) -> bool {
+    if output.succeeded() { return true }
+    _ := sys.eprint(output.stderr_text())
+    false
+}
+
+fn write(path: string, value: string) -> bool {
+    if sys.write_text(path, value).ok { return true }
+    _ := sys.eprint("could not write " + path)
+    false
+}
+
+fn main() -> i32 {
+    tree := "build/tree-sitter-dunder"
+    ext := "build/zed"
+    lang := ext + "/languages/dunder"
+    runtime := "build/nvim"
+    if !fs.mkdir_all(tree + "/src").ok || !fs.mkdir_all(tree + "/queries").ok ||
+       !fs.mkdir_all(tree + "/test/highlight").ok || !fs.mkdir_all(lang).ok ||
+       !fs.mkdir_all(runtime + "/parser").ok || !fs.mkdir_all(runtime + "/queries/dunder").ok { return 1 }
+    queries := @embed_file("editors/tree-sitter/queries/highlights.scm")
+    if !write(tree + "/src/grammar.json", grammar.source()) ||
+       !write(tree + "/tree-sitter.json", @embed_file("editors/tree-sitter/tree-sitter.json")) ||
+       !write(tree + "/queries/highlights.scm", queries) ||
+       !write(tree + "/test/highlight/literals.ddr", @embed_file("editors/tree-sitter/test/highlight/literals.ddr")) { return 1 }
+    generated := run("tree-sitter", ["generate", "--abi", "14", "src/grammar.json"], tree)
+    if !checked(&generated) {
+        _ := sys.eprint("Install the Tree-sitter CLI and make tree-sitter available on PATH.")
+        return 1
+    }
+
+    native := run("tree-sitter", ["build", "--output", "../nvim/parser/dunder.so"], tree)
+    if !checked(&native) || !write(runtime + "/queries/dunder/highlights.scm", queries) { return 1 }
+
+    // Zed builds grammars from Git revisions. Keep the generated parser in the build directory.
+    init := run("git", ["init", "--quiet"], tree)
+    if !checked(&init) { return 1 }
+    stage := run("git", ["add", "--", "src", "queries", "tree-sitter.json"], tree)
+    if !checked(&stage) { return 1 }
+    diff := run("git", ["diff", "--cached", "--quiet"], tree)
+    if diff.ok && diff.code == 1 {
+        commit := run("git", ["-c", "user.name=Dunder", "-c", "user.email=build@localhost",
+            "-c", "core.hooksPath=/dev/null", "commit", "--quiet", "--no-gpg-sign", "-m", "Generate Dunder grammar"], tree)
+        if !checked(&commit) { return 1 }
+    } else if !checked(&diff) { return 1 }
+    head := run("git", ["rev-parse", "HEAD"], tree)
+    if !checked(&head) { return 1 }
+    path := fs.realpath(tree)
+    if !path.ok { return 1 }
+    // Git accepts an absolute local pathname, including spaces, as the repository URL.
+    source := json.to_string<string>(&path.value).unwrap()
+    manifest := @embed_file("editors/zed/extension.toml") +
+        "\n[grammars.dunder]\nrepository = " + source + "\nrev = \"" + text.trim(head.stdout_text()) + "\"\n"
+    if !write(ext + "/extension.toml", manifest) ||
+       !write(lang + "/config.toml", @embed_file("editors/zed/config.toml")) ||
+       !write(lang + "/highlights.scm", queries) { return 1 }
+    print("Tree-sitter grammar: " + tree)
+    print("Neovim runtime: " + runtime)
+    print("Zed dev extension: " + ext)
+    0
+}

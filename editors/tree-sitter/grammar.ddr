@@ -1,0 +1,110 @@
+import std.json as json
+import std.text as text
+
+fn quoted(value: string) -> string { json.to_string<string>(&value).unwrap() }
+
+fn node(kind: string, key: string, value: string) -> string {
+    "{\"type\":" + quoted(kind) + "," + quoted(key) + ":" + value + "}"
+}
+
+fn symbol(name: string) -> string { node("SYMBOL", "name", quoted(name)) }
+fn literal(value: string) -> string { node("STRING", "value", quoted(value)) }
+fn pattern(value: string) -> string { node("PATTERN", "value", quoted(value)) }
+fn immediate(content: string) -> string { node("IMMEDIATE_TOKEN", "content", content) }
+fn repeated(content: string) -> string { node("REPEAT", "content", content) }
+
+fn members(kind: string, values: &[]string) -> string {
+    mut out := "["
+    for i in 0..values.len {
+        if i > 0 { out = out + "," }
+        out = out + values[i]
+    }
+    node(kind, "members", out + "]")
+}
+
+fn choice(values: &[]string) -> string { members("CHOICE", &values) }
+fn seq(values: &[]string) -> string { members("SEQ", &values) }
+
+fn words(list: string) -> string {
+    mut values: []string = []
+    for word in text.split(list, " ") { values.push(literal(word)) }
+    choice(&values)
+}
+
+fn string_rule(prefix: string, delimiter: string, hashes: string, raw: bool, formatted: bool) -> string {
+    quote := delimiter[0..1]
+    mut excluded := quote.clone()
+    mut parts: []string = []
+    if !raw {
+        excluded = excluded + r"\\"
+        if delimiter.len == 1 { excluded = excluded + r"\r\n" }
+        parts.push(immediate(pattern(r"\\[^\n]")))
+    }
+    if formatted {
+        excluded = excluded + "{}"
+        parts.push(immediate(literal("{{")))
+        parts.push(immediate(literal("}}")))
+        parts.push(symbol("interpolation"))
+    }
+    parts.push(immediate(pattern("[^" + excluded + "]+")))
+    if delimiter.len == 3 { parts.push(immediate(literal(quote))) }
+    if hashes.len > 0 {
+        parts.push(immediate(pattern(delimiter + "#{0," + (hashes.len - 1).str() + "}")))
+    }
+    seq(&[literal(prefix + hashes + delimiter), repeated(choice(&parts)), immediate(literal(delimiter + hashes))])
+}
+
+fn raw_strings() -> string {
+    mut forms: []string = []
+    mut hashes := ""
+    for _ in 0..65 {
+        for delimiter in ["\"", "'", "\"\"\""] {
+            forms.push(string_rule("r", delimiter, hashes, true, false))
+        }
+        hashes = hashes + "#"
+    }
+    choice(&forms)
+}
+
+fn rule(name: string, value: string) -> string { quoted(name) + ":" + value }
+
+pub fn source() -> string {
+    ident := r"[\p{L}_][\p{L}\p{M}\p{N}_]*"
+    names := "block_comment line_comment format_string raw_string string rune byte attribute number boolean keyword builtin_type identifier punctuation"
+    mut items: []string = []
+    for name in text.split(names, " ") { items.push(symbol(name)) }
+    mut rules: []string = []
+    rules.push(rule("source_file", repeated(symbol("_item"))))
+    rules.push(rule("_item", choice(&items)))
+    rules.push(rule("line_comment", pattern("//[^\n]*")))
+    rules.push(rule("block_comment", seq(&[literal("/*"), repeated(choice(&[
+        symbol("block_comment"), pattern("[^*/]+"), literal("*"), literal("/")
+    ])), literal("*/")])))
+    mut strings: []string = []
+    mut formats: []string = []
+    for delimiter in ["\"", "'", "\"\"\""] {
+        strings.push(string_rule("", delimiter, "", false, false))
+        formats.push(string_rule("f", delimiter, "", false, true))
+    }
+    rules.push(rule("string", choice(&strings)))
+    rules.push(rule("format_string", choice(&formats)))
+    rules.push(rule("raw_string", raw_strings()))
+    braces := seq(&[literal("{"), repeated(choice(&[symbol("_item"), symbol("brace_group")])), literal("}")])
+    rules.push(rule("interpolation", braces))
+    rules.push(rule("brace_group", braces))
+    rules.push(rule("rune", string_rule("", "`", "", false, false)))
+    rules.push(rule("byte", string_rule("b", "'", "", false, false)))
+    rules.push(rule("attribute", pattern("@" + ident)))
+    rules.push(rule("number", pattern(r"(0[xX][0-9a-fA-F](_?[0-9a-fA-F])*|0[bB][01](_?[01])*|[0-9](_?[0-9])*(\.[0-9](_?[0-9])*)?([eE][+-]?[0-9](_?[0-9])*)?)")))
+    rules.push(rule("boolean", words("true false")))
+    rules.push(rule("keyword", words("as break capability const continue defer else enum fn for from if impl import in match move mut opaque pub return struct trait unsafe while")))
+    rules.push(rule("builtin_type", words("bool f32 f64 i16 i32 i64 ptr range rune str string u8 u16 u32 u64 usize Self")))
+    rules.push(rule("identifier", pattern(ident)))
+    rules.push(rule("punctuation", r'{"type":"TOKEN","content":{"type":"PREC","value":-1,"content":{"type":"PATTERN","value":"[^\\s]"}}}'))
+    mut result := r'{"name":"dunder","word":"identifier","extras":[{"type":"PATTERN","value":"\\s"}],"rules":{'
+    for i in 0..rules.len {
+        if i > 0 { result = result + "," }
+        result = result + rules[i]
+    }
+    result + "}}"
+}

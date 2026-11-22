@@ -1,0 +1,8 @@
+id = "dunder"
+name = "Dunder"
+description = "Syntax highlighting for Dunder source files."
+version = "0.1.0"
+schema_version = 1
+authors = ["Mik-pe"]
+repository = "https://github.com/Mik-pe/dunder-lsp"
+languages = ["languages/dunder"]

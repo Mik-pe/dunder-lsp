@@ -1,0 +1,7 @@
+version = 1
+
+[[git]]
+url = "https://github.com/Mik-pe/dunder.git"
+kind = "tag"
+reference = "v0.9.0"
+commit = "7fbcf1aad34e1f3cbe26051aacfc3b422a1eb846"

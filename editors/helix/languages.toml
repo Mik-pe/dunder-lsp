@@ -1,0 +1,12 @@
+[language-server.dunder-lsp]
+command = "dunder-lsp"
+args = ["--stdio"]
+
+[[language]]
+name = "dunder"
+scope = "source.dunder"
+file-types = ["ddr"]
+roots = ["dunder.toml"]
+comment-token = "//"
+language-servers = ["dunder-lsp"]
+indent = { tab-width = 4, unit = "    " }

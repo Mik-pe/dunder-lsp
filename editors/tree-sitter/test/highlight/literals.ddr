@@ -1,0 +1,15 @@
+@test fn literals() {
+// <- attribute
+//       ^ function
+    value := r##"en kortare "# avgränsare"##
+//                ^ string
+    number := 0b1010_0001
+//             ^ number
+    /* yttre /* inre */ fortfarande kommentar */
+//                         ^ comment
+    yes := true
+//          ^ boolean
+    rune_value := `å`
+//                 ^ string.special
+    assert(yes)
+}

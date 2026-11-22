@@ -1,0 +1,6 @@
+name = "Dunder"
+grammar = "dunder"
+path_suffixes = ["ddr"]
+line_comments = ["// "]
+block_comment = ["/* ", " */"]
+tab_size = 4

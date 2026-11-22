@@ -1,0 +1,16 @@
+{
+  "grammars": [
+    {
+      "name": "dunder",
+      "camelcase": "Dunder",
+      "scope": "source.dunder",
+      "file-types": [
+        "ddr"
+      ],
+      "highlights": "queries/highlights.scm"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0"
+  }
+}

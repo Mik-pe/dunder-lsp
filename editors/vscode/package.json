@@ -1,0 +1,45 @@
+{
+  "name": "dunder",
+  "displayName": "Dunder",
+  "description": "Syntax highlighting for Dunder source files.",
+  "version": "0.1.0",
+  "publisher": "mik-pe",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mik-pe/dunder-lsp.git",
+    "directory": "editors/vscode"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "files": [
+    "syntaxes/",
+    "language-configuration.json",
+    "README.md"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "dunder",
+        "aliases": [
+          "Dunder",
+          "dunder"
+        ],
+        "extensions": [
+          ".ddr"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "dunder",
+        "scopeName": "source.dunder",
+        "path": "./syntaxes/dunder.tmLanguage.json"
+      }
+    ]
+  }
+}

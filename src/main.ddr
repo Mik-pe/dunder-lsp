@@ -1,0 +1,24 @@
+capability stdio
+
+import sys
+import toolchain.cli
+import toolchain.driver
+import toolchain.lsp
+
+fn main() -> i32 {
+    argc := sys.arg_count()
+    if argc == 1 || (argc == 2 && sys.arg(1) == "--stdio") {
+        return lsp.run(driver.native_platform())
+    }
+    if argc == 2 && sys.arg(1) == "--version" {
+        print("dunder-lsp 0.1.0 (Dunder " + cli.compiler_version() + ")")
+        return 0
+    }
+    usage := "usage: dunder-lsp [--stdio | --version | --help]"
+    if argc == 2 && sys.arg(1) == "--help" {
+        print(usage)
+        return 0
+    }
+    _ := sys.eprint(usage)
+    2
+}

@@ -1,0 +1,10 @@
+name = "dunder-lsp"
+version = "0.1.0"
+root = "src/main.ddr"
+test_root = "tests/suite.ddr"
+
+[dependencies]
+toolchain = { git = "https://github.com/Mik-pe/dunder.git", tag = "v0.9.0", subdir = "selfhost/driver", capabilities = ["filesystem", "process", "unsafe", "stdio"] }
+
+[examples]
+prepare-editors = "editors/prepare.ddr"
